@@ -1,0 +1,23 @@
+app:
+  name: "OSINT Investigation Platform"
+  environment: "local"
+  data_dir: "./data"
+
+guardrails:
+  rate_limit_delay_seconds: 2.0
+  allow_cloud_fallback: false
+  banned_api_keys:
+    - "OPENAI_API_KEY"
+    - "ANTHROPIC_API_KEY"
+    - "HIBP_API_KEY"
+    - "DEHASHED_API_KEY"
+    - "INTELX_API_KEY"
+
+ai:
+  ollama_base_url: "http://localhost:11434"
+  text_llm_model: "llama3.1:8b"
+  vlm_model: "qwen2.5-vl:7b"
+  embedding_model: "BAAI/bge-small-en-v1.5"
+
+retention:
+  default_days: 90

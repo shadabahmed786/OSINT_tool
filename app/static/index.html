@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSINT Investigation Platform — Local Pivot Engine</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">AETHER OSINT</span>
+          <span class="brand-subtitle">Local Pivot & Intelligence Engine</span>
+        </div>
+      </div>
+
+      <div class="status-badge" id="system-status">
+        <span class="status-dot"></span>
+        <span id="status-text">LOCAL SYSTEM READY</span>
+      </div>
+    </header>
+
+    <!-- Search Section -->
+    <main class="main-content">
+      <section class="hero-section">
+        <h1 class="hero-title">Start Pivot Investigation</h1>
+        <p class="hero-desc">Enter a single selector (Email, Username, Phone, or Name) to initiate automated live enumeration & confidence scoring.</p>
+
+        <form id="investigate-form" class="search-box-wrapper">
+          <div class="search-input-group">
+            <div class="input-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.3-4.3"/>
+              </svg>
+            </div>
+            <input 
+              type="text" 
+              id="target-input" 
+              placeholder="e.g. target_user, email@domain.com, +14155552671..." 
+              required
+              autocomplete="off"
+            >
+            <div class="selector-badge" id="detected-badge">AUTO DETECT</div>
+          </div>
+
+          <div class="search-actions">
+            <select id="selector-override" class="custom-select">
+              <option value="">Auto Detect Type</option>
+              <option value="email">Email Address</option>
+              <option value="username">Username / Alias</option>
+              <option value="phone">Phone Number</option>
+              <option value="name">Full Name</option>
+            </select>
+            <button type="submit" id="submit-btn" class="btn-primary">
+              <span>RUN PIVOT</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Stats Bar -->
+      <div class="stats-grid" id="stats-bar" style="display: none;">
+        <div class="stat-card">
+          <div class="stat-label">TOTAL DISCOVERED HITS</div>
+          <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card highlight-high">
+          <div class="stat-label">HIGH CONFIDENCE HITS</div>
+          <div class="stat-value" id="stat-high">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">MEDIUM CONFIDENCE</div>
+          <div class="stat-value" id="stat-med">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">OVERALL CASE RATING</div>
+          <div class="stat-value tier-tag" id="stat-overall">-</div>
+        </div>
+      </div>
+
+      <!-- Password Exposure Tool (Collapsible) -->
+      <section class="card tool-card">
+        <div class="tool-header" id="pwd-tool-toggle">
+          <div class="tool-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span>Password Exposure Check (Free HIBP k-Anonymity)</span>
+          </div>
+          <span class="badge-free">ZERO-DATA LEAK</span>
+        </div>
+        <div class="tool-body" id="pwd-tool-body">
+          <p class="tool-desc">Check if a target password hash has been exposed in data breaches. Your password is hashed locally (SHA-1 prefix query) and never sent across the network.</p>
+          <div class="pwd-input-group">
+            <input type="text" id="pwd-input" placeholder="Enter plain password or SHA-1 hash to test...">
+            <button id="pwd-check-btn" class="btn-secondary">Check Exposure</button>
+          </div>
+          <div id="pwd-result" class="pwd-result-box" style="display:none;"></div>
+        </div>
+      </section>
+
+      <!-- Results & Timeline Section -->
+      <section id="results-section" style="display: none;">
+        <div class="results-toolbar">
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="findings-tab">Discovered Findings (<span id="findings-count">0</span>)</button>
+            <button class="tab-btn" data-tab="graph-tab">Node Graph View</button>
+            <button class="tab-btn" data-tab="pending-tab">Pending Pivots (<span id="pending-count">0</span>)</button>
+            <button class="tab-btn" data-tab="timeline-tab">Evidence Audit Log (<span id="log-count">0</span>)</button>
+          </div>
+
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="ALL">All</button>
+            <button class="filter-btn" data-filter="HIGH">High</button>
+            <button class="filter-btn" data-filter="MEDIUM">Medium</button>
+            <button class="filter-btn" data-filter="LOW">Low</button>
+            <button id="ai-summary-btn" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 13px;">
+              <span>✨ AI Executive Report</span>
+            </button>
+            <a id="export-md-btn" href="#" target="_blank" class="btn-outline">Export Report (.md)</a>
+          </div>
+        </div>
+
+        <!-- AI Executive Report Card (Hidden by default) -->
+        <div id="ai-summary-card" class="card tool-card" style="display: none; margin-bottom: 20px; border: 1px solid var(--accent-color);">
+          <div class="tool-header">
+            <div class="tool-title">
+              <span>✨ Executive AI Intelligence Report</span>
+            </div>
+            <span class="badge-free" id="ai-engine-badge">LOCAL LLM</span>
+          </div>
+          <div class="tool-body" id="ai-summary-content" style="white-space: pre-line; line-height: 1.6; font-size: 14px;">
+            Generating local AI intelligence report...
+          </div>
+        </div>
+
+        <!-- Tab 1: Findings Grid -->
+        <div id="findings-tab" class="tab-content active">
+          <div id="findings-container" class="findings-grid"></div>
+        </div>
+
+        <!-- Tab 2: Interactive Node Graph -->
+        <div id="graph-tab" class="tab-content">
+          <div class="card graph-card-wrapper" style="position: relative; overflow: hidden; padding: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span style="font-size: 13px; color: var(--text-muted);">Target-Centered Pivot Link Analysis Graph (Click node to inspect)</span>
+              <div style="display: flex; gap: 12px; font-size: 12px;">
+                <span><span style="color:#10b981;">●</span> High Conf</span>
+                <span><span style="color:#f59e0b;">●</span> Medium Conf</span>
+                <span><span style="color:#64748b;">●</span> Low Conf</span>
+              </div>
+            </div>
+            <canvas id="graph-canvas" width="900" height="450" style="width: 100%; height: 450px; background: rgba(13, 17, 23, 0.6); border-radius: 8px; border: 1px solid var(--border-color);"></canvas>
+          </div>
+        </div>
+
+        <!-- Tab 3: Pending Selector Approval Queue (§0, §10) -->
+        <div id="pending-tab" class="tab-content">
+          <div class="card" style="padding: 15px;">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+              🔒 <strong>Human-in-the-Loop Pivot Queue (§0):</strong> Per security guardrail §0, newly discovered secondary selectors require explicit approval before pivoting enumeration.
+            </p>
+            <div id="pending-list" class="findings-grid">
+              <div style="text-align: center; color: var(--text-muted); padding: 20px;">No pending secondary selectors awaiting approval.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Timeline / Audit Log -->
+        <div id="timeline-tab" class="tab-content">
+          <div class="timeline-table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Event Type</th>
+                  <th>Audit Log Details</th>
+                </tr>
+              </thead>
+              <tbody id="evidence-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Past Cases History Sidebar / Drawer -->
+      <section class="card history-card">
+        <h3 class="card-title">Recent Investigation Runs</h3>
+        <div id="history-list" class="history-list">
+          <p class="text-muted">No past investigations recorded yet.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
