@@ -2,6 +2,12 @@
   publish = "app/static"
   command = "echo 'No build required'"
 
+[[redirects]]
+  from = "/api/*"
+  to = "https://YOUR_BACKEND_HOST/:splat"
+  status = 200
+  force = false
+
 [context]
-  # Deploy static files from app/static which contains index.html, app.js, and style.css
-  # This prevents Netlify from attempting a missing/incorrect build step.
+# Replace YOUR_BACKEND_HOST with your deployed backend URL (e.g., https://osint-backend.example.com).
+# Netlify will proxy requests to /api/* to the backend. Set any secrets or hostnames in Netlify UI as environment variables.
