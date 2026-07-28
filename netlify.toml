@@ -1,0 +1,7 @@
+[build]
+  publish = "app/static"
+  command = "echo 'No build required'"
+
+[context]
+  # Deploy static files from app/static which contains index.html, app.js, and style.css
+  # This prevents Netlify from attempting a missing/incorrect build step.
