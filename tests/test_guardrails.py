@@ -1,9 +1,9 @@
 import os
 import unittest
-import asyncio
 from pathlib import Path
-from app.config import BASE_DIR, FORBIDDEN_API_KEYS
-from app.database import init_db, create_investigation, get_investigation, log_evidence
+from backend.db.models import DatabaseManager
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 class TestGuardrailsAndSecurity(unittest.TestCase):
 
@@ -22,10 +22,10 @@ class TestGuardrailsAndSecurity(unittest.TestCase):
             "facecheck.id"
         ]
 
-        app_dir = BASE_DIR / "app"
+        backend_dir = BASE_DIR / "backend"
         violations = []
 
-        for root, _, files in os.walk(app_dir):
+        for root, _, files in os.walk(backend_dir):
             for file in files:
                 if file.endswith(".py"):
                     filepath = Path(root) / file
@@ -44,20 +44,30 @@ class TestGuardrailsAndSecurity(unittest.TestCase):
         Guardrail (§0, §3):
         Verifies that evidence_log accurately records audit entries and provides no update/delete access.
         """
-        async def run_test():
-            await init_db()
-            inv = await create_investigation("test-guardrail-id", "test_target", "username")
+        import uuid
+        db = DatabaseManager()
+        db._init_db()
+        inv_id = str(uuid.uuid4())
 
-            await log_evidence("test-guardrail-id", "test_action", "Audit detail entry 1")
-            await log_evidence("test-guardrail-id", "test_action", "Audit detail entry 2")
+        with db.get_connection() as conn:
+            conn.cursor().execute(
+                "INSERT INTO investigations (id, initial_selector, initial_selector_type) VALUES (?, ?, ?)",
+                (inv_id, "test_target", "username"),
+            )
+            conn.commit()
 
-            data = await get_investigation("test-guardrail-id")
-            logs = data.get("evidence_log", [])
+        db.log_evidence(inv_id, "investigation_created", {"selector": "test_target"})
+        db.log_evidence(inv_id, "test_action", "Audit detail entry 1")
+        db.log_evidence(inv_id, "test_action", "Audit detail entry 2")
 
-            self.assertGreaterEqual(len(logs), 3) # initial + 2 entries
-            self.assertEqual(logs[-1]["detail"], "Audit detail entry 2")
+        with db.get_connection() as conn:
+            logs = conn.cursor().execute(
+                "SELECT * FROM evidence_log WHERE investigation_id = ? ORDER BY id ASC",
+                (inv_id,),
+            ).fetchall()
 
-        asyncio.run(run_test())
+        self.assertGreaterEqual(len(logs), 3)
+        self.assertEqual(dict(logs[-1])["detail"], "Audit detail entry 2")
 
 if __name__ == "__main__":
     unittest.main()

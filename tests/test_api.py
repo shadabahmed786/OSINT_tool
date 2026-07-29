@@ -1,14 +1,14 @@
 import unittest
-import asyncio
 from fastapi.testclient import TestClient
-from app.main import app
-from app.database import init_db
+from backend.main import app
+from backend.db.models import DatabaseManager
 
 class TestAPIEndpoints(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        asyncio.run(init_db())
+        db = DatabaseManager()
+        db._init_db()
 
     def test_investigate_endpoint(self):
         with TestClient(app) as client:
@@ -35,7 +35,6 @@ class TestAPIEndpoints(unittest.TestCase):
 
     def test_ai_summary_endpoint(self):
         with TestClient(app) as client:
-            # Create an investigation
             res = client.post("/api/investigate", json={"target": "octocat", "selector_type": "username"})
             inv_id = res.json()["id"]
 

@@ -99,6 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.disabled = false;
           submitBtn.innerHTML = `<span>RUN PIVOT</span>`;
           loadHistory();
+          if (data.status === "failed") {
+            alert("Investigation status: Failed. " + (data.summary || ""));
+          }
         }
       } catch (err) {
         console.error("Polling error:", err);
@@ -190,6 +193,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const resp = await fetch(`/api/investigations/${currentInvestigationId}/approve-selector/${selectorId}`, { method: "POST" });
       if (resp.ok) {
         loadPendingSelectors();
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>RUNNING PIVOT...</span>`;
+        startPolling(currentInvestigationId);
+      } else {
+        alert("Error approving pivot target: Server returned error");
       }
     } catch (err) {
       alert("Error approving pivot: " + err.message);
@@ -285,14 +293,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (list.length === 0) return;
 
-      historyList.innerHTML = list.slice(0, 5).map(item => `
+      historyList.innerHTML = list.slice(0, 5).map(item => {
+        const target = item.target || item.initial_selector || "Unknown";
+        const selectorType = (item.selector_type || item.initial_selector_type || "N/A").toUpperCase();
+        return `
         <div class="history-item" onclick="viewHistory('${item.id}')">
           <div>
-            <strong>${item.target}</strong> <span class="selector-badge">${item.selector_type}</span>
+            <strong>${target}</strong> <span class="selector-badge">${selectorType}</span>
           </div>
-          <div><code>${item.created_at}</code></div>
+          <div><code>${item.created_at || ''}</code></div>
         </div>
-      `).join("");
+      `;
+      }).join("");
     } catch (err) {
       console.error("History load error:", err);
     }
