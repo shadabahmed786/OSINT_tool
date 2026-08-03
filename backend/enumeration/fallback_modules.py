@@ -23,10 +23,22 @@ DISPOSABLE_EMAIL_DOMAINS = {
     "yopmail.com", "maildrop.cc", "tempmailo.com", "crazymailing.com", "fakemailgenerator.com"
 }
 
+# Pakistani mobile prefix -> carrier map (post-MNP, prefix is a best-effort signal only)
+PK_CARRIER_PREFIXES = {
+    **{p: "Jazz" for p in ["300", "301", "302", "303", "304", "305", "306", "307", "308", "309",
+                            "320", "321", "322", "323", "324", "325", "326", "327", "328", "329"]},
+    **{p: "Zong" for p in ["310", "311", "312", "313", "314", "315", "316", "317", "318", "319",
+                            "370", "371", "372", "373", "374", "375", "376", "377", "378", "379"]},
+    **{p: "Ufone" for p in ["330", "331", "332", "333", "334", "335", "336", "337", "338", "339"]},
+    **{p: "Telenor" for p in ["340", "341", "342", "343", "344", "345", "346", "347", "348", "349"]},
+    "355": "SCOM (AJK/GB)",
+}
+
 # Regional Phone Dialing Code Database (30+ Countries)
 COUNTRY_CODES = {
     "1": {"country": "United States / Canada", "iso": "US/CA", "flag": "🇺🇸/🇨🇦"},
     "44": {"country": "United Kingdom", "iso": "GB", "flag": "🇬🇧"},
+    "92": {"country": "Pakistan", "iso": "PK", "flag": "🇵🇰"},
     "91": {"country": "India", "iso": "IN", "flag": "🇮🇳"},
     "49": {"country": "Germany", "iso": "DE", "flag": "🇩🇪"},
     "33": {"country": "France", "iso": "FR", "flag": "🇫🇷"},
@@ -255,6 +267,23 @@ async def run_username_http_fallback(username: str, investigation_id: str, db: D
                 logger.debug(f"CodePen check error: {e}")
             return None
 
+        async def check_rozee():
+            try:
+                resp = await client.get(f"https://www.rozee.pk/{username}")
+                if resp.status_code == 200 and "rozee" in resp.text.lower():
+                    return Hit(
+                        platform="Rozee.pk",
+                        source_tool="username_checker",
+                        display_name=username,
+                        bio=f"Rozee.pk (Pakistan job board) profile candidate: https://www.rozee.pk/{username}",
+                        account_status="active",
+                        confidence_tier="MEDIUM",
+                        confidence_score=0.55
+                    )
+            except Exception as e:
+                logger.debug(f"Rozee.pk check error: {e}")
+            return None
+
         # Run ALL platform API checks simultaneously in parallel
         tasks = [
             check_github(),
@@ -266,6 +295,7 @@ async def run_username_http_fallback(username: str, investigation_id: str, db: D
             check_substack(),
             check_keybase(),
             check_codepen(),
+            check_rozee(),
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -440,12 +470,28 @@ async def run_phone_http_fallback(phone: str, investigation_id: str, db: Databas
     if digits.startswith("1800") or digits.startswith("1888") or digits.startswith("1877") or digits.startswith("1866"):
         line_type = "Toll-Free / Business Line"
 
+    # Pakistani mobile: local "03XXXXXXXXX" (11 digits) or E.164 "923XXXXXXXXX" (12 digits)
+    pk_prefix = None
+    if digits.startswith("0") and len(digits) == 11:
+        pk_prefix = digits[1:4]
+        e164 = f"+92{digits[1:]}"
+        detected_country, iso_code, country_flag = "Pakistan", "PK", "🇵🇰"
+    elif digits.startswith("92") and len(digits) == 12:
+        pk_prefix = digits[2:5]
+
+    carrier_note = ""
+    if pk_prefix:
+        carrier = PK_CARRIER_PREFIXES.get(pk_prefix)
+        if carrier:
+            line_type = "Mobile (GSM)"
+            carrier_note = f" | Carrier (prefix-based, unreliable if ported): {carrier}"
+
     hit = Hit(
         platform="Telephony Metadata Registry",
         source_tool="phone_checker",
         display_name=f"{country_flag} {detected_country} ({iso_code})",
         region=detected_country,
-        bio=f"E.164 Standard Format: {e164} | Country: {detected_country} ({iso_code}) | Estimated Line Type: {line_type} | Digit Length: {len(digits)}",
+        bio=f"E.164 Standard Format: {e164} | Country: {detected_country} ({iso_code}) | Estimated Line Type: {line_type} | Digit Length: {len(digits)}{carrier_note}",
         account_status="active",
         confidence_tier="HIGH",
         confidence_score=0.90

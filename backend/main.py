@@ -118,8 +118,8 @@ async def run_enumeration(inv_id: str, background_tasks: BackgroundTasks):
             adapter = HoleheAdapter(db)
             hits = await adapter.run(selector, inv_id)
         elif selector_type == "username":
-            from backend.enumeration.sherlock_adapter import SherlockAdapter
-            adapter = SherlockAdapter(db)
+            from backend.enumeration.maigret_adapter import MaigretAdapter
+            adapter = MaigretAdapter(db)
             hits = await adapter.run(selector, inv_id)
         elif selector_type == "phone":
             from backend.enumeration.phoneinfoga_adapter import PhoneInfogaAdapter
@@ -131,8 +131,8 @@ async def run_enumeration(inv_id: str, background_tasks: BackgroundTasks):
             hits = await adapter.run(selector, inv_id)
         else:
             # General names or unknown types fall back to username adapter
-            from backend.enumeration.sherlock_adapter import SherlockAdapter
-            adapter = SherlockAdapter(db)
+            from backend.enumeration.maigret_adapter import MaigretAdapter
+            adapter = MaigretAdapter(db)
             hits = await adapter.run(selector, inv_id)
 
         with db.get_connection() as conn:
